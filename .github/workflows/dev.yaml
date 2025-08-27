@@ -17,11 +17,11 @@ jobs:
                 ssh -o StrictHostKeyChecking=no -i ~/harshmax.pem ubuntu@${{ secrets.DEV_SERVER_IP }} << 'EOF'
                     export NVM_DIR="$HOME/.nvm"
                     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-                    cd /home/ubuntu/paisafy-client
+                    cd /home/ubuntu/paisafy-server
                     git pull origin master
                     echo "${{ secrets.ENV }}" > .env
                     pnpm install
-                    cd /home/ubuntu/paisafy-client
+                    cd /home/ubuntu/paisafy-server
                     pnpm run build
-                    pm2 restart pfs
+                    pm2 restart pbs
                 EOF

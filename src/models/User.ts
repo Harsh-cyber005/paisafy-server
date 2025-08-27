@@ -11,6 +11,7 @@ export interface IRecurringExpense extends Types.Subdocument {
 }
 
 export interface IUser extends Document {
+    _id: mongoose.Types.ObjectId; 
     fullName: string;
     email: string;
     password: string;
@@ -21,6 +22,7 @@ export interface IUser extends Document {
     incomeSources: Types.DocumentArray<IIncomeSource>;
     recurringExpenses: Types.DocumentArray<IRecurringExpense>;
     financeTipsOptIn: boolean;
+    onboardingDone: boolean;
 }
 
 const IncomeSourceSchema: Schema = new Schema({
@@ -43,7 +45,8 @@ const UserSchema: Schema = new Schema({
     incomeType: { type: String, enum: ['Monthly', 'Irregular'], required: true },
     incomeSources: [IncomeSourceSchema],
     recurringExpenses: [RecurringExpenseSchema],
-    financeTipsOptIn: { type: Boolean, default: false }
+    financeTipsOptIn: { type: Boolean, default: false },
+    onboardingDone: { type: Boolean, default: false }
 }, { timestamps: true });
 
 export default mongoose.model<IUser>('User', UserSchema);

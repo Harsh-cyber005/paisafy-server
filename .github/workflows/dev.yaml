@@ -15,7 +15,7 @@ jobs:
 
       - name: Upload .env
         run: |
-          echo "${{ secrets.ENV }}" | ssh -i ~/harshmax.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.DEV_SERVER_IP }} "cat > /home/ubuntu/paisafy-client/.env"
+          echo "${{ secrets.ENV }}" | ssh -i ~/harshmax.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.DEV_SERVER_IP }} "cat > /home/ubuntu/paisafy-server/.env"
 
       - name: Redeploy
         run: |
@@ -23,9 +23,9 @@ jobs:
             export NVM_DIR="\$HOME/.nvm"
             [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
             export PATH=\$PATH:/home/ubuntu/.npm-global/bin
-            cd /home/ubuntu/paisafy-client
+            cd /home/ubuntu/paisafy-server
             git pull origin master
             pnpm install
             pnpm run build
-            pm2 restart pfs
+            pm2 restart pbs
           EOF

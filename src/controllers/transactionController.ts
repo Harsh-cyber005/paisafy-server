@@ -115,7 +115,6 @@ export const getTransactionSummary = async (req: Request, res: Response) => {
         const targetMonth = month ? parseInt(month as string) : currentMonth;
 
         const cacheKey = `summary:${userEmail}:month-${targetMonth}-year-${targetYear}`;
-        console.log('Cache Key:', cacheKey);
         const cachedSummary = await redisClient.get(cacheKey);
         if (cachedSummary) {
             return res.status(200).json(JSON.parse(cachedSummary));
@@ -131,8 +130,7 @@ export const getTransactionSummary = async (req: Request, res: Response) => {
 
         const result = {
             totalIncome: summary.find(s => s._id === 'Income')?.totalAmount || 0,
-            totalExpense: summary.find(s => s._id === 'Expense')?.totalAmount || 0,
-            sideIncomes: sideIncomes
+            totalExpense: summary.find(s => s._id === 'Expense')?.totalAmount || 0
         };
 
         await redisClient.setEx(cacheKey, 900, JSON.stringify(result));

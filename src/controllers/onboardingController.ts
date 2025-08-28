@@ -4,6 +4,8 @@ import User, { IIncomeSource, IRecurringExpense } from '../models/User';
 import Goal from '../models/Goal';
 import { redisClient } from '../config/redisClient';
 import { Types } from 'mongoose';
+import Transaction from '../models/Transaction';
+import Jar from '../models/Jar';
 
 export const onboardingSchema = z.object({
     body: z.object({
@@ -64,6 +66,7 @@ export const submitOnboarding = async (req: Request, res: Response) => {
         user.recurringExpenses = recurringExpensesData as Types.DocumentArray<IRecurringExpense>;
 
         const goalsToCreate = [];
+        const jars = [];
         const predefinedGoalNames: Record<string, string> = {
             laptop: "New Laptop", trip: "Weekend Trip", emergency: "Build Emergency Fund", invest: "Invest in Stocks",
         };
@@ -72,8 +75,9 @@ export const submitOnboarding = async (req: Request, res: Response) => {
                 userId: user._id,
                 goalName: predefinedGoalNames[id] || 'Goal',
                 targetAmount: goals.predefinedGoals[id].amount,
-                targetDate: goals.predefinedGoals[id].date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // Default 1 year
+                targetDate: goals.predefinedGoals[id].date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
             });
+            jars.push({ userId: user._id, jarName: predefinedGoalNames[id] || 'Goal', goalAmount: goals.predefinedGoals[id].amount, amountSaved: 0 });
         }
         for (const goal of goals.customGoals) {
             goalsToCreate.push({
@@ -82,10 +86,44 @@ export const submitOnboarding = async (req: Request, res: Response) => {
                 targetAmount: goal.amount,
                 targetDate: goal.date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
             });
+            jars.push({ userId: user._id, jarName: goal.name, goalAmount: goal.amount, amountSaved: 0 });
         }
         if (goalsToCreate.length > 0) {
             await Goal.insertMany(goalsToCreate);
         }
+        if (jars.length > 0) {
+            await Jar.insertMany(jars);
+        }
+
+        const incomeTransaction = new Transaction({
+            userId: user._id,
+            amount: user.monthlyIncome,
+            type: 'Income',
+            category: 'Income',
+            description: 'User onboarding monthly income',
+            transactionDate: new Date(),
+        });
+        await incomeTransaction.save();
+
+        const expenseTransactions = user.recurringExpenses.map(expense => new Transaction({
+            userId: user._id,
+            amount: expense.amount,
+            type: 'Expense',
+            category: 'Recurring',
+            description: `User onboarding recurring expense: ${expense.expenseName}`,
+            transactionDate: new Date(),
+        }));
+        await Transaction.insertMany(expenseTransactions);
+
+        const transactionsFromIncomeSources = user.incomeSources.map(source => new Transaction({
+            userId: user._id,
+            amount: source.amount,
+            type: 'Income',
+            category: 'Additional Income',
+            description: `User onboarding additional income source: ${source.sourceName}`,
+            transactionDate: new Date(),
+        }));
+        await Transaction.insertMany(transactionsFromIncomeSources);
 
         user.financeTipsOptIn = goals.financeTips;
         user.onboardingDone = true;

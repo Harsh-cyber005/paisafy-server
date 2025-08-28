@@ -21,7 +21,7 @@ const bodyHTML = `
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>duobrain OTP</title>
+    <title>Paisafy OTP</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -39,7 +39,7 @@ const bodyHTML = `
             overflow: hidden;
         }
         .header {
-            background-color: #5046E4;
+            background-color: #029C7E;
             color: #ffffff;
             text-align: center;
             padding: 20px;
@@ -60,7 +60,7 @@ const bodyHTML = `
         .otp {
             font-size: 32px;
             font-weight: bold;
-            color: #5046E4;
+            color: #029C7E;
             margin: 20px 0;
         }
     </style>
@@ -68,7 +68,7 @@ const bodyHTML = `
 <body>
     <div class="email-container">
         <div class="header">
-            <h1>Welcome to duobrain</h1>
+            <h1>Welcome to Paisafy</h1>
         </div>
         <div class="content">
             <p>Hi there, $$userName$$</p>

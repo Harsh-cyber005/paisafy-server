@@ -13,10 +13,11 @@ jobs:
           echo "${{ secrets.HARSHMAX_PEM }}" > ~/harshmax.pem
           chmod 600 ~/harshmax.pem
           
-      - name: Upload .env securely
+      - name: Upload .env using Heredoc
         run: |
-          echo "Uploading .env file..."
-          echo "${{ secrets.ENV }}" | base64 -w 0 | ssh -i ~/harshmax.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.DEV_SERVER_IP }} "base64 -d > /home/ubuntu/paisafy-server/.env"
+          ssh -i ~/harshmax.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.DEV_SERVER_IP }} 'cat > /home/ubuntu/paisafy-server/.env' << EOF
+          ${{ secrets.ENV }}
+          EOF
 
       - name: Redeploy
         run: |

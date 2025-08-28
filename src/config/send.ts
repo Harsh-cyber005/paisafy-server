@@ -97,7 +97,7 @@ async function sendMail(m: MailOptions) {
         from: m.from,
         to: m.to,
         html: m.body,
-        subject: 'duobrain - OTP Verification',
+        subject: 'Paisafy - OTP Verification',
     };
     try {
         await transporter.sendMail(mailOptions);
@@ -138,5 +138,3 @@ async function Mail(rq: { emailAddress: string; userName: string, otp: string })
 }
 
 export { Mail };
-
-Mail({ emailAddress: "harshxgupta931@gmail.com", userName: "John Doe", otp: "123456" });

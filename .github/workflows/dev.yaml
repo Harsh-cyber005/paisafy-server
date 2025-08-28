@@ -1,27 +1,31 @@
 name: deploy to dev cluster
 on:
-    push:
-        branches:
-            - "master"
+  push:
+    branches:
+      - "master"
 
 jobs:
-    redeploy:
-        name: Redeploy to Development Cluster
-        runs-on: ubuntu-latest
-        steps:
-        - name: SSH and Redeploy
-          run: |
-                echo "${{ secrets.HARSHMAX_PEM }}" > ~/harshmax.pem
-                chmod 600 ~/harshmax.pem
-                
-                ssh -o StrictHostKeyChecking=no -i ~/harshmax.pem ubuntu@${{ secrets.DEV_SERVER_IP }} << 'EOF'
-                    export NVM_DIR="$HOME/.nvm"
-                    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-                    export PATH=$(npm config get prefix)/bin:$PATH
-                    cd /home/ubuntu/paisafy-server
-                    git pull origin master
-                    echo "${{ secrets.ENV }}" > .env
-                    pnpm install
-                    pnpm run build
-                    pm2 restart pbs
-                EOF
+  redeploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH Key
+        run: |
+          echo "${{ secrets.HARSHMAX_PEM }}" > ~/harshmax.pem
+          chmod 600 ~/harshmax.pem
+
+      - name: Upload .env
+        run: |
+          echo "${{ secrets.ENV }}" | ssh -i ~/harshmax.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.DEV_SERVER_IP }} "cat > /home/ubuntu/paisafy-client/.env"
+
+      - name: Redeploy
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/harshmax.pem ubuntu@${{ secrets.DEV_SERVER_IP }} << EOF
+            export NVM_DIR="\$HOME/.nvm"
+            [ -s "\$NVM_DIR/nvm.sh" ] && \. "\$NVM_DIR/nvm.sh"
+            export PATH=\$PATH:/home/ubuntu/.npm-global/bin
+            cd /home/ubuntu/paisafy-client
+            git pull origin master
+            pnpm install
+            pnpm run build
+            pm2 restart pfs
+          EOF

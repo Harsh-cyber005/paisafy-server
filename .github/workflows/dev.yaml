@@ -12,9 +12,10 @@ jobs:
         run: |
           echo "${{ secrets.HARSHMAX_PEM }}" > ~/harshmax.pem
           chmod 600 ~/harshmax.pem
-
+          
       - name: Upload .env
         run: |
+          echo "${{secrets.ENV}}"
           echo "${{ secrets.ENV }}" | ssh -i ~/harshmax.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.DEV_SERVER_IP }} "cat > /home/ubuntu/paisafy-server/.env"
 
       - name: Redeploy

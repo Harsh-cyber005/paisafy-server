@@ -14,7 +14,7 @@ jobs:
                 echo "${{ secrets.HARSHMAX_PEM }}" > ~/harshmax.pem
                 chmod 600 ~/harshmax.pem
                 
-                ssh -o StrictHostKeyChecking=no -i ~/harshmax.pem ubuntu@${{ secrets.DEV_SERVER_IP }} << 'EOF'
+                ssh -o StrictHostKeyChecking=no -i ~/harshmax.pem ubuntu@${{ secrets.DEV_SERVER_IP }} << EOF
                     export NVM_DIR="$HOME/.nvm"
                     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
                     cd /home/ubuntu/paisafy-server

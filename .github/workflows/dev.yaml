@@ -15,6 +15,7 @@ jobs:
           
       - name: Upload .env securely
         run: |
+          echo "Uploading .env file..."
           echo "${{ secrets.ENV }}" | base64 -w 0 | ssh -i ~/harshmax.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.DEV_SERVER_IP }} "base64 -d > /home/ubuntu/paisafy-server/.env"
 
       - name: Redeploy

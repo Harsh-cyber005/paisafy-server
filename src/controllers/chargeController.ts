@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import User from '../models/User';
 import UpcomingCharge from '../models/UpcomingCharge';
 import { redisClient } from '../config/redisClient';
+import Transaction from '../models/Transaction';
 
 export const createChargeSchema = z.object({
     body: z.object({
@@ -22,6 +23,15 @@ const invalidateChargesCache = async (userEmail: string) => {
     const keys = await redisClient.keys(`charges:${userEmail}:*`);
     if (keys.length > 0) {
         await redisClient.del(keys);
+    }
+};
+
+const invalidateTransactionCaches = async (userEmail: string) => {
+    const keys = await redisClient.keys(`transactions:${userEmail}:*`);
+    const summaryKeys = await redisClient.keys(`summary:${userEmail}:*`);
+    const allKeys = [...keys, ...summaryKeys];
+    if (allKeys.length > 0) {
+        await redisClient.del(allKeys);
     }
 };
 
@@ -67,7 +77,7 @@ export const getAllCharges = async (req: Request, res: Response) => {
             return res.status(200).json(JSON.parse(cachedCharges));
         }
 
-        const charges = await UpcomingCharge.find({ userId: user._id, status: status }).sort({ dueDate: 1 });
+        const charges = await UpcomingCharge.find({ userId: user._id, status: status, isPaid: false }).sort({ dueDate: 1 });
 
         await redisClient.setEx(cacheKey, 3600, JSON.stringify(charges));
         res.status(200).json(charges);
@@ -133,7 +143,42 @@ export const markChargeAsPaid = async (req: Request, res: Response) => {
             { new: true }
         );
         if (!updatedCharge) return res.status(404).json({ message: 'Charge not found or access denied.' });
+        await Transaction.create({
+            userId: user._id,
+            amount: updatedCharge.amount,
+            type: "Expense",
+            status: 'Completed',
+            category: updatedCharge.field,
+            description: `Paid charge: ${updatedCharge._id}`,
+            transactionDate: new Date(),
+        });
 
+        await invalidateTransactionCaches(userEmail);
+        await invalidateChargesCache(userEmail);
+        res.status(200).json(updatedCharge);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error });
+    }
+};
+
+export const markChargeAsNotPaid = async (req: Request, res: Response) => {
+    try {
+        const { chargeId } = req.params;
+        const userEmail = req.user!.email;
+        const user = await User.findOne({ email: userEmail }).select('_id');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const updatedCharge = await UpcomingCharge.findOneAndUpdate(
+            { _id: chargeId, userId: user._id },
+            { isPaid: false, status: 'Due' },
+            { new: true }
+        );
+        if (!updatedCharge) return res.status(404).json({ message: 'Charge not found or access denied.' });
+        const alreadyPaidTransaction = await Transaction.findOne({ description: `Paid charge: ${updatedCharge._id}` });
+        if (alreadyPaidTransaction) {
+            await Transaction.deleteOne({ _id: alreadyPaidTransaction._id });
+        }
+        await invalidateTransactionCaches(userEmail);
         await invalidateChargesCache(userEmail);
         res.status(200).json(updatedCharge);
     } catch (error) {

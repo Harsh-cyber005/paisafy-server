@@ -9,7 +9,8 @@ import {
     markChargeAsPaid,
     deleteCharge,
     createChargeSchema,
-    updateChargeSchema
+    updateChargeSchema,
+    markChargeAsNotPaid
 } from '../controllers/chargeController';
 
 const chargeRouter = Router();
@@ -27,5 +28,6 @@ chargeRouter.route('/:chargeId')
     .delete(deleteCharge);
 
 chargeRouter.patch('/:chargeId/mark-paid', markChargeAsPaid);
+chargeRouter.patch('/:chargeId/mark-not-paid', markChargeAsNotPaid);
 
 export default chargeRouter;

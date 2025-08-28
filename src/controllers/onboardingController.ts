@@ -98,7 +98,7 @@ export const submitOnboarding = async (req: Request, res: Response) => {
         const incomeTransaction = new Transaction({
             userId: user._id,
             amount: user.monthlyIncome,
-            type: 'Income',
+            type: 'RecurringIncome',
             category: 'Income',
             description: 'User onboarding monthly income',
             transactionDate: new Date(),
@@ -108,7 +108,7 @@ export const submitOnboarding = async (req: Request, res: Response) => {
         const expenseTransactions = user.recurringExpenses.map(expense => new Transaction({
             userId: user._id,
             amount: expense.amount,
-            type: 'Expense',
+            type: 'RecurringExpense',
             category: 'Recurring',
             description: `User onboarding recurring expense: ${expense.expenseName}`,
             transactionDate: new Date(),
@@ -118,7 +118,7 @@ export const submitOnboarding = async (req: Request, res: Response) => {
         const transactionsFromIncomeSources = user.incomeSources.map(source => new Transaction({
             userId: user._id,
             amount: source.amount,
-            type: 'Income',
+            type: 'RecurringIncome',
             category: 'Additional Income',
             description: `User onboarding additional income source: ${source.sourceName}`,
             transactionDate: new Date(),

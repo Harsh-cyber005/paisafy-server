@@ -3,6 +3,7 @@ import { z } from 'zod';
 import User from '../models/User';
 import Jar from '../models/Jar';
 import { redisClient } from '../config/redisClient';
+import Transaction from '../models/Transaction';
 
 export const createJarSchema = z.object({
     body: z.object({
@@ -12,7 +13,7 @@ export const createJarSchema = z.object({
 });
 
 export const updateJarSchema = z.object({
-    body: createJarSchema.shape.body.partial(), // All fields are optional
+    body: createJarSchema.shape.body.partial(),
 });
 
 export const moneyTransactionSchema = z.object({
@@ -20,6 +21,15 @@ export const moneyTransactionSchema = z.object({
         amount: z.number().positive({ message: 'Amount must be a positive number' }),
     }),
 });
+
+const invalidateTransactionCaches = async (userEmail: string) => {
+    const keys = await redisClient.keys(`transactions:${userEmail}:*`);
+    const summaryKeys = await redisClient.keys(`summary:${userEmail}:*`);
+    const allKeys = [...keys, ...summaryKeys];
+    if (allKeys.length > 0) {
+        await redisClient.del(allKeys);
+    }
+};
 
 const invalidateJarsCache = async (userEmail: string) => {
     const cacheKey = `jars:${userEmail}`;
@@ -99,9 +109,17 @@ export const depositToJar = async (req: Request, res: Response) => {
         const jar = await Jar.findOne({ _id: jarId, userId: user._id });
         if (!jar) return res.status(404).json({ message: 'Jar not found or access denied.' });
 
+        await new Transaction({
+            userId: user._id,
+            amount: -1 * amount,
+            type: 'Income',
+            description: `Deposit to jar: ${jar.jarName}`,
+        }).save();
+
         jar.amountSaved += amount;
         await jar.save();
 
+        await invalidateTransactionCaches(userEmail);
         await invalidateJarsCache(userEmail);
         res.status(200).json(jar);
     } catch (error) {
@@ -124,9 +142,17 @@ export const withdrawFromJar = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Withdrawal amount cannot be greater than the saved amount.' });
         }
 
+        await new Transaction({
+            userId: user._id,
+            amount,
+            type: 'Income',
+            description: `Withdraw from jar: ${jar.jarName}`,
+        }).save();
+
         jar.amountSaved -= amount;
         await jar.save();
 
+        await invalidateTransactionCaches(userEmail);
         await invalidateJarsCache(userEmail);
         res.status(200).json(jar);
     } catch (error) {
@@ -143,7 +169,9 @@ export const deleteJar = async (req: Request, res: Response) => {
 
         const deletedJar = await Jar.findOneAndDelete({ _id: jarId, userId: user._id });
         if (!deletedJar) return res.status(404).json({ message: 'Jar not found or access denied.' });
-
+        
+        await Transaction.deleteMany({ userId: user._id, description: `Deposit to jar: ${deletedJar.jarName}` });
+        await invalidateTransactionCaches(userEmail);
         await invalidateJarsCache(userEmail);
         res.status(200).json({ message: 'Jar deleted successfully.' });
     } catch (error) {

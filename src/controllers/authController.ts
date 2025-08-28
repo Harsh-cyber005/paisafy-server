@@ -4,6 +4,7 @@ import jwt, {SignOptions} from 'jsonwebtoken';
 import crypto from 'crypto';
 import { z } from 'zod';
 import User from '../models/User';
+import { Mail } from '../config/send';
 
 export const signupSchema = z.object({
     body: z.object({
@@ -110,6 +111,7 @@ export const sendOTP = async(req: Request<{}, {}, z.infer<typeof otpSchema>['bod
         user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
         await user.save();
         console.log(`[DEV-ONLY] OTP for ${user.email}: ${otp}`);
+        await Mail({ emailAddress: user.email, userName: user.fullName, otp });
         res.status(200).json({ message: 'OTP sent to email.' });
     } catch (err) {
         console.error((err as Error).message);

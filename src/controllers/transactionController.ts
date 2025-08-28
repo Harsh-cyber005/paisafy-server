@@ -7,7 +7,7 @@ import { redisClient } from '../config/redisClient';
 export const transactionSchema = z.object({
     body: z.object({
         amount: z.number().positive({ message: 'Amount must be a positive number' }),
-        type: z.enum(['Income', 'Expense']),
+        type: z.enum(['Income', 'Expense', 'RecurringIncome', 'RecurringExpense']),
         category: z.string().min(2, { message: 'Category is required' }),
         description: z.string().optional(),
         transactionDate: z.string().datetime().optional(),
@@ -128,9 +128,16 @@ export const getTransactionSummary = async (req: Request, res: Response) => {
             { $group: { _id: '$type', totalAmount: { $sum: '$amount' } } }
         ]);
 
+        const recurringSummary = await Transaction.aggregate([
+            { $match: { userId: user._id, type: { $in: ['RecurringIncome', 'RecurringExpense'] } } },
+            { $group: { _id: '$type', totalAmount: { $sum: '$amount' } } }
+        ]);
+
         const result = {
             totalIncome: summary.find(s => s._id === 'Income')?.totalAmount || 0,
-            totalExpense: summary.find(s => s._id === 'Expense')?.totalAmount || 0
+            totalExpense: summary.find(s => s._id === 'Expense')?.totalAmount || 0,
+            totalRecurringIncome: recurringSummary.find(s => s._id === 'RecurringIncome')?.totalAmount || 0,
+            totalRecurringExpense: recurringSummary.find(s => s._id === 'RecurringExpense')?.totalAmount || 0
         };
 
         await redisClient.setEx(cacheKey, 900, JSON.stringify(result));
@@ -215,7 +222,7 @@ export const getSpendingTrend = async (req: Request, res: Response) => {
             {
                 $match: {
                     userId: user._id,
-                    type: 'Expense',
+                    type: { $in: ['Expense', 'RecurringExpense'] },
                     transactionDate: { $gte: startDate, $lte: endDate }
                 }
             },

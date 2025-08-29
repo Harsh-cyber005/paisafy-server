@@ -10,6 +10,6 @@ insightsRouter.get("/", (req, res) => {
 
 insightsRouter.use(protect);
 
-insightsRouter.post('/insights', getUserInsights);
+insightsRouter.get('/all', getUserInsights);
 
 export default insightsRouter;

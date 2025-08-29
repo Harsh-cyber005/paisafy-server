@@ -10,6 +10,7 @@ import goalRouter from "./routes/goal";
 import chargeRouter from "./routes/charge";
 import jarRouter from "./routes/jar";
 import onboardingRouter from "./routes/onboarding";
+import insightsRouter from "./routes/insights";
 
 dotenv.config();
 connectDB();
@@ -28,6 +29,7 @@ app.use("/api/goal", goalRouter);
 app.use("/api/charges", chargeRouter);
 app.use("/api/jars", jarRouter);
 app.use("/api/onboarding", onboardingRouter);
+app.use("/api/insights", insightsRouter);
 
 app.get("/", (req: Request, res: Response) => {
     res.send("Hello from TypeScript Express!");

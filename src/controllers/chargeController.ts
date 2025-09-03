@@ -5,6 +5,7 @@ import User from '../models/User';
 import UpcomingCharge from '../models/UpcomingCharge';
 import { redisClient } from '../config/redisClient';
 import Transaction from '../models/Transaction';
+import { invalidateInsightsCache } from './insightController';
 
 export const createChargeSchema = z.object({
     body: z.object({
@@ -55,6 +56,7 @@ export const createCharge = async (req: Request, res: Response) => {
         await newCharge.save();
 
         await invalidateChargesCache(userEmail);
+        await invalidateInsightsCache(userEmail);
         res.status(201).json(newCharge);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
@@ -124,6 +126,7 @@ export const updateCharge = async (req: Request, res: Response) => {
         if (!updatedCharge) return res.status(404).json({ message: 'Charge not found or access denied.' });
 
         await invalidateChargesCache(userEmail);
+        await invalidateInsightsCache(userEmail);
         res.status(200).json(updatedCharge);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
@@ -155,6 +158,7 @@ export const markChargeAsPaid = async (req: Request, res: Response) => {
 
         await invalidateTransactionCaches(userEmail);
         await invalidateChargesCache(userEmail);
+        await invalidateInsightsCache(userEmail);
         res.status(200).json(updatedCharge);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
@@ -180,6 +184,7 @@ export const markChargeAsNotPaid = async (req: Request, res: Response) => {
         }
         await invalidateTransactionCaches(userEmail);
         await invalidateChargesCache(userEmail);
+        await invalidateInsightsCache(userEmail);
         res.status(200).json(updatedCharge);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
@@ -197,6 +202,7 @@ export const deleteCharge = async (req: Request, res: Response) => {
         if (!deletedCharge) return res.status(404).json({ message: 'Charge not found or access denied.' });
 
         await invalidateChargesCache(userEmail);
+        await invalidateInsightsCache(userEmail);
         res.status(200).json({ message: 'Charge deleted successfully.' });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });

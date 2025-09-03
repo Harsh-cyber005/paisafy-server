@@ -3,6 +3,7 @@ import { z } from 'zod';
 import User from '../models/User';
 import Transaction from '../models/Transaction';
 import { redisClient } from '../config/redisClient';
+import { invalidateInsightsCache } from './insightController';
 
 export const transactionSchema = z.object({
     body: z.object({
@@ -43,6 +44,8 @@ export const createTransaction = async (req: Request, res: Response) => {
         await newTransaction.save();
 
         await invalidateTransactionCaches(userEmail);
+
+        await invalidateInsightsCache(userEmail);
 
         res.status(201).json(newTransaction);
     } catch (error) {
@@ -182,6 +185,7 @@ export const updateTransaction = async (req: Request, res: Response) => {
         }
 
         await invalidateTransactionCaches(userEmail);
+        await invalidateInsightsCache(userEmail);
         res.status(200).json(updatedTransaction);
     } catch (error) {
         res.status(500).json({ message: 'Server Error', error });
@@ -200,6 +204,7 @@ export const deleteTransaction = async (req: Request, res: Response) => {
         }
 
         await invalidateTransactionCaches(userEmail);
+        await invalidateInsightsCache(userEmail);
         res.status(200).json({ message: 'Transaction deleted successfully.' });
     } catch (error) {
         res.status(500).json({ message: 'Server Error', error });
@@ -222,8 +227,31 @@ export const getSpendingTrend = async (req: Request, res: Response) => {
             {
                 $match: {
                     userId: user._id,
-                    type: { $in: ['Expense', 'RecurringExpense'] },
+                    type: { $in: ['Expense'] },
                     transactionDate: { $gte: startDate, $lte: endDate }
+                }
+            },
+            {
+                $group: {
+                    _id: { $dayOfMonth: "$transactionDate" },
+                    totalAmount: { $sum: "$amount" }
+                }
+            },
+            { $sort: { "_id": 1 } },
+            {
+                $project: {
+                    _id: 0,
+                    day: { $toString: "$_id" },
+                    amount: "$totalAmount"
+                }
+            }
+        ]);
+
+        const dbTrendRecurring = await Transaction.aggregate([
+            {
+                $match: {
+                    userId: user._id,
+                    type: { $in: ['RecurringExpense'] }
                 }
             },
             {
@@ -245,6 +273,10 @@ export const getSpendingTrend = async (req: Request, res: Response) => {
         const trendMap = new Map<string, number>();
         dbTrend.forEach(item => {
             trendMap.set(item.day, item.amount);
+        });
+
+        dbTrendRecurring.forEach(item => {
+            trendMap.set(item.day, (trendMap.get(item.day) || 0) + item.amount);
         });
 
         const fullMonthTrend = Array.from({ length: daysInMonth }, (_, i) => {

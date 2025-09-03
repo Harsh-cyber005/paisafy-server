@@ -4,6 +4,7 @@ import User from '../models/User';
 import Jar from '../models/Jar';
 import { redisClient } from '../config/redisClient';
 import Transaction from '../models/Transaction';
+import { invalidateInsightsCache } from './insightController';
 
 export const createJarSchema = z.object({
     body: z.object({
@@ -49,6 +50,7 @@ export const createJar = async (req: Request, res: Response) => {
         await newJar.save();
 
         await invalidateJarsCache(userEmail);
+        await invalidateInsightsCache(userEmail);
         res.status(201).json(newJar);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
@@ -92,6 +94,7 @@ export const updateJar = async (req: Request, res: Response) => {
         if (!updatedJar) return res.status(404).json({ message: 'Jar not found or access denied.' });
 
         await invalidateJarsCache(userEmail);
+        await invalidateInsightsCache(userEmail);
         res.status(200).json(updatedJar);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
@@ -121,6 +124,7 @@ export const depositToJar = async (req: Request, res: Response) => {
 
         await invalidateTransactionCaches(userEmail);
         await invalidateJarsCache(userEmail);
+        await invalidateInsightsCache(userEmail);
         res.status(200).json(jar);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
@@ -154,6 +158,7 @@ export const withdrawFromJar = async (req: Request, res: Response) => {
 
         await invalidateTransactionCaches(userEmail);
         await invalidateJarsCache(userEmail);
+        await invalidateInsightsCache(userEmail);
         res.status(200).json(jar);
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });
@@ -173,6 +178,7 @@ export const deleteJar = async (req: Request, res: Response) => {
         await Transaction.deleteMany({ userId: user._id, description: `Deposit to jar: ${deletedJar.jarName}` });
         await invalidateTransactionCaches(userEmail);
         await invalidateJarsCache(userEmail);
+        await invalidateInsightsCache(userEmail);
         res.status(200).json({ message: 'Jar deleted successfully.' });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error });

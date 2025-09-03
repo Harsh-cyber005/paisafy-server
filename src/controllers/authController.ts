@@ -5,6 +5,10 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import User from '../models/User';
 import { Mail } from '../config/send';
+import Job from '../models/Job';
+import Transaction from '../models/Transaction';
+import { invalidateInsightsCache } from './insightController';
+import { invalidateTransactionCaches } from './transactionController';
 
 export const signupSchema = z.object({
     body: z.object({
@@ -173,6 +177,51 @@ export const userDetails = async (req: Request, res: Response) => {
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
+        }
+        const job = await Job.findOne({ userId: user._id });
+        if(!job) {
+            const recurringTotalIncomes = user.incomeSources.reduce((acc, source) => acc + source.amount, 0) + user.monthlyIncome;
+            const recurringTotalExpenses = user.recurringExpenses.reduce((acc, expense) => acc + expense.amount, 0);
+            await Transaction.create({
+                userId: user._id,
+                amount: recurringTotalIncomes,
+                type: 'RecurringIncome',
+                category: 'Recurring Income',
+            });
+            await Transaction.create({
+                userId: user._id,
+                amount: recurringTotalExpenses,
+                type: 'RecurringExpense',
+                category: 'Recurring Expense',
+            });
+            const newJob = new Job({
+                userId: user._id,
+                lastUpdatedMonth: new Date().getMonth() + 1,
+                lastUpdatedYear: new Date().getFullYear()
+            });
+            await newJob.save();
+            await invalidateTransactionCaches(user.email);
+            await invalidateInsightsCache(user.email);
+        } else if (job.lastUpdatedMonth !== new Date().getMonth() + 1 || job.lastUpdatedYear !== new Date().getFullYear()) {
+            const recurringTotalIncomes = user.incomeSources.reduce((acc, source) => acc + source.amount, 0) + user.monthlyIncome;
+            const recurringTotalExpenses = user.recurringExpenses.reduce((acc, expense) => acc + expense.amount, 0);
+            await Transaction.create({
+                userId: user._id,
+                amount: recurringTotalIncomes,
+                type: 'RecurringIncome',
+                category: 'Recurring Income',
+            });
+            await Transaction.create({
+                userId: user._id,
+                amount: recurringTotalExpenses,
+                type: 'RecurringExpense',
+                category: 'Recurring Expense',
+            });
+            await invalidateTransactionCaches(user.email);
+            await invalidateInsightsCache(user.email);
+            job.lastUpdatedMonth = new Date().getMonth() + 1;
+            job.lastUpdatedYear = new Date().getFullYear();
+            await job.save();
         }
         const { fullName, onboardingDone } = user;
         res.status(200).json({ email, fullName, onboardingDone });

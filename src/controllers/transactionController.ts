@@ -19,7 +19,7 @@ export const updateTransactionSchema = z.object({
     body: transactionSchema.shape.body.partial(),
 });
 
-const invalidateTransactionCaches = async (userEmail: string) => {
+export const invalidateTransactionCaches = async (userEmail: string) => {
     const keys = await redisClient.keys(`transactions:${userEmail}:*`);
     const summaryKeys = await redisClient.keys(`summary:${userEmail}:*`);
     const allKeys = [...keys, ...summaryKeys];
